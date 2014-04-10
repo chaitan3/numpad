@@ -1,3 +1,5 @@
 .*.swp
-*.npy
+*.np*
 *.pyc
+*.png
+*.dot

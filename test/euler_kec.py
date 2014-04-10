@@ -182,16 +182,17 @@ def vis(w, geo):
     ylabel('y')
     title('p')
     draw()
+    show()
 
 # ---------------------- time integration --------------------- #
-geometry = 'bend'
+geometry = 'nozzle'
 
 if geometry == 'nozzle':
-    Ni, Nj = 50, 20
+    Ni, Nj = 200,80
     x = np.linspace(-20,20,Ni+1)
     y = np.linspace(-5, 5, Nj+1)
     a = np.ones(Ni+1)
-    a[np.abs(x) < 10] = 1 - (1 + cos(x[np.abs(x) < 10] / 10 * np.pi)) * 0.1
+    a[np.abs(x) < 10] = 1 - (1 + np.cos(x[np.abs(x) < 10] / 10 * np.pi)) * 0.1
     
     y, x = np.meshgrid(y, x)
     y *= a[:,np.newaxis]
@@ -255,3 +256,8 @@ vis(w, geo)
 
 rho, u, v, E, p = [base(pi) for pi in primative(extend(w, geo))]
 
+#save transpose of jacobian and flow solution
+F = euler_kec(w, w, geo, dt)
+Jt = F.diff(w).transpose().tocsr()
+np.savez('{0}{1}x{2}-flow'.format(geometry,Ni,Nj), w1=rho, w2=rho*u, w3=rho*v, w4=E)
+np.savez('{0}{1}x{2}-jacobian'.format(geometry,Ni,Nj), x=Jt.data, y=Jt.indices, z=Jt.indptr)

@@ -83,19 +83,19 @@ def grad_dual(phi, geo):
 
     return 2 * grad_phi / area
 
-def ns_flux(rho, u, v, E, p, grad_u):
+def ns_flux(rho, u, v, E, p, grad_ue):
     # viscous stress
-    dudx, dudy, dvdx, dvdy = grad_u
+    dudx, dudy, dvdx, dvdy, dedx, dedy = grad_ue
     sigma_xx = mu * (2 * dudx - 2./3 * (dudx + dvdy))
     sigma_yy = mu * (2 * dvdy - 2./3 * (dudx + dvdy))
     sigma_xy = mu * (dudy + dvdx)
 
     F = array([rho * u, rho * u**2 + p - sigma_xx,
                         rho * u * v    - sigma_xy,
-                        u * (E + p)    - sigma_xx * u - sigma_xy * v])
+                        u * (E + p)    - sigma_xx * u - sigma_xy * v - al * dedx])
     G = array([rho * v, rho * u * v    - sigma_xy,
                         rho * v**2 + p - sigma_yy,
-                        v * (E + p)    - sigma_xy * u - sigma_yy * v])
+                        v * (E + p)    - sigma_xy * u - sigma_yy * v - al * dedy])
     return F, G
 
 def sponge_flux(c_ext, w_ext, geo):
@@ -117,10 +117,12 @@ def ns_kec(w, w0, geo, dt):
     w_ext = extend(w, geo)
     rho, u, v, E, p = primative(w_ext)
     c = sqrt(1.4 * p / rho)
+    e = E/rho - (u*u+v*v)/2
     # velocity gradient on nodes
     dudx, dudy = grad_dual(u[1:-1,1:-1], geo)
     dvdx, dvdy = grad_dual(v[1:-1,1:-1], geo)
-    duv_dxy = array([dudx, dudy, dvdx, dvdy])
+    dedx, dedy = grad_dual(e[1:-1,1:-1], geo)
+    duve_dxy = array([dudx, dudy, dvdx, dvdy, dedx, dedy])
     # interface average
     rho_i = 0.5 * (rho[1:,1:-1] + rho[:-1,1:-1])
     rho_j = 0.5 * (rho[1:-1,1:] + rho[1:-1,:-1])
@@ -133,13 +135,13 @@ def ns_kec(w, w0, geo, dt):
     p_i = 0.5 * (p[1:,1:-1] + p[:-1,1:-1])
     p_j = 0.5 * (p[1:-1,1:] + p[1:-1,:-1])
     # interface strain rate averged from dual mesh (nodal) values
-    duv_dxy_i = 0.5 * (duv_dxy[:,:,1:] + duv_dxy[:,:,:-1])
-    duv_dxy_j = 0.5 * (duv_dxy[:,1:,:] + duv_dxy[:,:-1,:])
+    duve_dxy_i = 0.5 * (duve_dxy[:,:,1:] + duve_dxy[:,:,:-1])
+    duve_dxy_j = 0.5 * (duve_dxy[:,1:,:] + duve_dxy[:,:-1,:])
     # inlet and outlet have no viscous stress
-    duv_dxy_i[:,[0,-1],:] = 0
+    duve_dxy_i[:,[0,-1],:] = 0
     # interface flux
-    f_i, g_i = ns_flux(rho_i, u_i, v_i, E_i, p_i, duv_dxy_i)
-    f_j, g_j = ns_flux(rho_j, u_j, v_j, E_j, p_j, duv_dxy_j)
+    f_i, g_i = ns_flux(rho_i, u_i, v_i, E_i, p_i, duve_dxy_i)
+    f_j, g_j = ns_flux(rho_j, u_j, v_j, E_j, p_j, duve_dxy_j)
     Fi = + f_i * geo.dxy_i[1] - g_i * geo.dxy_i[0]
     Fj = - f_j * geo.dxy_j[1] + g_j * geo.dxy_j[0]
     # sponge
@@ -258,6 +260,7 @@ t, dt = 0, 1./Nj
 pt_in = 1.2E5
 p_out = 1E5
 mu = 1
+al = 1
 
 w = zeros([4, Ni, Nj])
 w[0] = 1
@@ -295,3 +298,10 @@ savefig('navierstokes-{0}.png'.format(geometry))
 open('graph.dot', 'wt').write(dot(w))
 
 show(block=True)
+
+rho, u, v, E, p = [base(pi) for pi in primative(extend(w, geo))]
+#save transpose of jacobian and flow solution
+F = ns_kec(w, w, geo, dt)
+Jt = F.diff(w).transpose().tocsr()
+np.savez('ns-flow', w1=rho, w2=rho*u, w3=rho*v, w4=E)
+np.savez('ns-Jt', x=Jt.data, y=Jt.indices, z=Jt.indptr)

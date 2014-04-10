@@ -135,6 +135,11 @@ def solve(func, u0, args=(), kargs={},
         # Newton update
         J = res.diff(u).tocsr()
         minus_du = splinalg.spsolve(J, np.ravel(res._base), use_umfpack=False)
+        #P = splinalg.spilu(J, drop_tol=1e-5)
+        #M_x = lambda x: P.solve(x)
+        #M = splinalg.LinearOperator((n * m, n * m), M_x)
+        #minus_du = splinalg.gmres(J, np.ravel(res._base), M=M,tol=1e-6)
+
         u._base -= minus_du.reshape(u.shape)
         u = adarray(u._base)  # unlink operation history if any
         _DEBUG_perturb_new(u)
