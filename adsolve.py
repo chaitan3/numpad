@@ -113,13 +113,14 @@ class adsolution(adarray):
         del self._n_Newton
         del self._res_norm
 
-
+import time
 def solve(func, u0, args=(), kargs={},
           max_iter=10, abs_tol=1E-6, rel_tol=1E-6, verbose=True):
     u = adarray(base(u0).copy())
     _DEBUG_perturb_new(u)
 
     for i_Newton in range(max_iter):
+        start = time.time()
         res = func(u, *args, **kargs)  # TODO: how to put into adarray context?
         res_norm = np.linalg.norm(res._base, np.inf)
         if verbose:
@@ -134,7 +135,9 @@ def solve(func, u0, args=(), kargs={},
 
         # Newton update
         J = res.diff(u).tocsr()
-        minus_du = splinalg.spsolve(J, np.ravel(res._base), use_umfpack=False)
+        start2 = time.time()
+        minus_du = splinalg.spsolve(J, np.ravel(res._base))
+        print time.time()-start2
         #P = splinalg.spilu(J, drop_tol=1e-5)
         #M_x = lambda x: P.solve(x)
         #M = splinalg.LinearOperator((n * m, n * m), M_x)
@@ -143,6 +146,8 @@ def solve(func, u0, args=(), kargs={},
         u._base -= minus_du.reshape(u.shape)
         u = adarray(u._base)  # unlink operation history if any
         _DEBUG_perturb_new(u)
+
+        print time.time()-start
     # not converged
     return adsolution(u, res, np.inf)
 

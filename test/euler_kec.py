@@ -188,7 +188,7 @@ def vis(w, geo):
 geometry = 'nozzle'
 
 if geometry == 'nozzle':
-    Ni, Nj = 200,80
+    Ni, Nj = 50, 20
     x = np.linspace(-20,20,Ni+1)
     y = np.linspace(-5, 5, Nj+1)
     a = np.ones(Ni+1)
