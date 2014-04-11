@@ -8,9 +8,9 @@ a = array([[0.0403873274904, 0.0614442631391, 0.122696726814],
     ])
 
 n = [50, 100, 200]
-plt.loglog(n, a[0]/n, label='w1a')
-plt.loglog(n, a[1]/n, label='w2a')
-plt.loglog(n, a[2]/n, label='w3a')
+plt.loglog(n, a[0]*1e4/n, label='w1a')
+plt.loglog(n, a[1]*1e2/n, label='w2a')
+plt.loglog(n, a[2]*1e3/n, label='w3a')
 plt.loglog(n, a[3]/n, label='w4a')
 plt.legend()
 plt.xlabel('n')

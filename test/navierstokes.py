@@ -303,5 +303,5 @@ rho, u, v, E, p = [base(pi) for pi in primative(extend(w, geo))]
 #save transpose of jacobian and flow solution
 F = ns_kec(w, w, geo, dt)
 Jt = F.diff(w).transpose().tocsr()
-np.savez('ns-flow', w1=rho, w2=rho*u, w3=rho*v, w4=E)
-np.savez('ns-Jt', x=Jt.data, y=Jt.indices, z=Jt.indptr)
+np.savez('{0}{1}x{2}-flow'.format(geometry,Ni,Nj), w1=rho, w2=rho*u, w3=rho*v, w4=E)
+np.savez('{0}{1}x{2}-jacobian'.format(geometry,Ni,Nj), x=Jt.data, y=Jt.indices, z=Jt.indptr)

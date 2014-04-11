@@ -3,6 +3,7 @@ import sys
 from pylab import *
 sys.path.append('../..')
 from numpad import *
+from perturb import perturbation
 
 class geo2d:
     def __init__(self, xy):
@@ -54,11 +55,6 @@ gf[obj] = g
 #discrete adjoint
 whd = splinalg.spsolve(Jt, np.ravel(gf), use_umfpack=False)
 whd = whd.reshape([4,Ni,Nj])
-subplot(2,1,1)
-contourf(xc, yc, whd[0,:,:], 100)
-colorbar()
-title('discrete adjoint')
-axis('scaled')
 
 flow = np.load('nozzle{0}x{1}-flow.npz'.format(Ni, Nj))
 w = np.array([flow['w1'], flow['w2'], flow['w3'], flow['w4']])
@@ -201,11 +197,28 @@ print('Final, t = inf')
 wh = solve(adjoint_eqns, wh0, args=(wh0, geo, dt), rel_tol=1E-9, abs_tol=1E-7)
 wh = base(extend(wh, geo))
 
-subplot(2,1,2)
-contourf(xc, yc, wh[0,1:-1,1:-1], 100)
-colorbar()
-title('continuous adjoint')
-axis('scaled')
-show()
+fig,axes = subplots(nrows=2, ncols=1)
+lim = [min(wh[0,:,:].min(), whd[0,:,:].min()), max(wh[0,:,:].max(),wh[0:,:,:].max())]
+
+im=axes[0].contourf(xc, yc, whd[0,:,:], 100, vmin=lim[0], vmax=lim[1])
+axes[0].set_title('discrete adjoint')
+axes[0].axis('scaled')
+
+im=axes[1].contourf(xc, yc, wh[0,1:-1,1:-1], 100, vmin=lim[0], vmax=lim[1])
+axes[1].set_title('continuous adjoint')
+axes[1].axis('scaled')
+
+fig.subplots_adjust(right=0.8)
+cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
+fig.colorbar(im, cax=cbar_ax)
+#show()
 
 print obj, Ni, Nj, np.linalg.norm(wh[0,1:-1,1:-1]-whd[0], 'fro')
+
+flow = np.load('nozzle{0}x{1}-flow-perturbed.npz'.format(Ni, Nj))
+wp = np.array([flow['w1'], flow['w2'], flow['w3'], flow['w4']])
+pf = np.zeros([4,Ni,Nj])
+perturbation(base(geo.xyc), pf)
+print 'objective delta ', sum((w[:,1:-1,1:-1]-wp[:,1:-1,1:-1])*gf)
+print 'discrete adjoint prediction', sum(whd*pf)
+print 'continuous adjoint prediction', sum(wh[:,1:-1,1:-1]*pf)

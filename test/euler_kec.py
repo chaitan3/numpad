@@ -3,6 +3,7 @@ import sys
 from pylab import *
 sys.path.append('../..')
 from numpad import *
+from perturb import perturbation
 
 def extend(w_interior, geo):
     '''
@@ -109,7 +110,7 @@ def euler_kec(w, w0, geo, dt):
     Fi[-5:,:] += 0.5 * Fi_s[-5:,:]
     # residual
     divF = (Fi[:,1:,:] - Fi[:,:-1,:] + Fj[:,:,1:] - Fj[:,:,:-1]) / geo.area
-    return (w - w0) / dt + ravel(divF)
+    return (w - w0) / dt + ravel(divF + pf)
 
 
 # -------------------------- geometry ------------------------- #
@@ -188,7 +189,7 @@ def vis(w, geo):
 geometry = 'nozzle'
 
 if geometry == 'nozzle':
-    Ni, Nj = 50, 20
+    Ni, Nj = 200,80
     x = np.linspace(-20,20,Ni+1)
     y = np.linspace(-5, 5, Nj+1)
     a = np.ones(Ni+1)
@@ -215,6 +216,15 @@ elif geometry == 'bend':
     x, y = np.vstack([x0, x, x1]), np.vstack([y0, y, y1])
 
 geo = geo2d([x, y])
+
+perturb = False
+if len(sys.argv) > 1:
+    if sys.argv[1] == "p":
+        perturb = True
+pf = np.zeros([4, Ni, Nj])
+if perturb:
+    print 'perturbing'
+    perturbation(base(geo.xyc), pf)
 
 t, dt = 0, 0.1
 
@@ -257,7 +267,11 @@ vis(w, geo)
 rho, u, v, E, p = [base(pi) for pi in primative(extend(w, geo))]
 
 #save transpose of jacobian and flow solution
-F = euler_kec(w, w, geo, dt)
-Jt = F.diff(w).transpose().tocsr()
-np.savez('{0}{1}x{2}-flow'.format(geometry,Ni,Nj), w1=rho, w2=rho*u, w3=rho*v, w4=E)
-np.savez('{0}{1}x{2}-jacobian'.format(geometry,Ni,Nj), x=Jt.data, y=Jt.indices, z=Jt.indptr)
+if not perturb:
+    F = euler_kec(w, w, geo, dt)
+    Jt = F.diff(w).transpose().tocsr()
+    np.savez('{0}{1}x{2}-flow'.format(geometry,Ni,Nj), w1=rho, w2=rho*u, w3=rho*v, w4=E)
+    np.savez('{0}{1}x{2}-jacobian'.format(geometry,Ni,Nj), x=Jt.data, y=Jt.indices, z=Jt.indptr)
+else:
+    np.savez('{0}{1}x{2}-flow-perturbed'.format(geometry,Ni,Nj), w1=rho, w2=rho*u, w3=rho*v, w4=E)
+

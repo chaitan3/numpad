@@ -43,7 +43,7 @@ x, y = vstack([x0, x, x1]), vstack([y0, y, y1])
 
 geo = geo2d([x, y])
 
-data = np.load('ns-Jt.npz')
+data = np.load('bend{0}x{1}-jacobian.npz'.format(Ni, Nj))
 Jt = sp.csr_matrix((data['x'], data['y'], data['z']), shape=(4*Ni*Nj, 4*Ni*Nj))
 
 xc, yc = base(geo.xyc)
@@ -52,15 +52,10 @@ gf = np.zeros([4, Ni, Nj])
 gf[2] = g
 
 #discrete adjoint
-wh = splinalg.spsolve(Jt, np.ravel(gf), use_umfpack=False)
-wh = wh.reshape([4,Ni,Nj])
-subplot(2,1,1)
-contourf(xc, yc, wh[0,:,:], 100)
-colorbar()
-title('discrete adjoint')
-axis('scaled')
+whd = splinalg.spsolve(Jt, np.ravel(gf), use_umfpack=False)
+whd = whd.reshape([4,Ni,Nj])
 
-flow = np.load('ns-flow.npz')
+flow = np.load('bend{0}x{1}-flow.npz'.format(Ni, Nj))
 mu, al = 1, 1
 w = np.array([flow['w1'], flow['w2'], flow['w3'], flow['w4']])
 w_i = (w[:,1:,1:-1] + w[:,:-1,1:-1])/2
@@ -142,6 +137,8 @@ def extend(wh_interior, geo):
     nwall = hstack([nwall[:,:1], nwall, nwall[:,-1:]])
     rhoU_n = sum(wh[1:3,:,-1] * nwall, 0)
     wh[1:3,:,-1] -= 2 * rhoU_n * nwall
+
+    wh[3,:,[0,-1]] = 0
 
     return wh
 
@@ -287,9 +284,18 @@ print('Final, t = inf')
 wh = solve(adjoint_eqns, wh0, args=(wh0, geo, dt), rel_tol=1E-9, abs_tol=1E-7)
 wh = base(extend(wh, geo))
 
-subplot(2,1,2)
-contourf(xc, yc, wh[0,1:-1,1:-1], 100)
-colorbar()
-title('continuous adjoint')
-axis('scaled')
+fig,axes = subplots(nrows=2, ncols=1)
+lim = [min(wh[0,:,:].min(), whd[0,:,:].min()), max(wh[0,:,:].max(),wh[0:,:,:].max())]
+
+im=axes[0].contourf(xc, yc, whd[0,:,:], 100, vmin=lim[0], vmax=lim[1])
+axes[0].set_title('discrete adjoint')
+axes[0].axis('scaled')
+
+im=axes[1].contourf(xc, yc, wh[0,1:-1,1:-1], 100, vmin=lim[0], vmax=lim[1])
+axes[1].set_title('continuous adjoint')
+axes[1].axis('scaled')
+
+fig.subplots_adjust(right=0.8)
+cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
+fig.colorbar(im, cax=cbar_ax)
 show()
