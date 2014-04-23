@@ -96,16 +96,18 @@ for i in range(0,4):
         An[i,j] = simplify(An[i,j])
 print An
 print "dw/dn"
-Dn = np.array(Dn.subs({w2:0,w3:0,n2**2:1-n1**2}).subs({n1**2:1-n2**2}))
+Dn = np.array(Dn.subs({w2:0,w3:0,n2:sqrt(1-n1**2)}))
 for i in range(0,4):
     for j in range(0,4):
         Dn[i,j] = simplify(Dn[i,j])
 print Dn
+C = np.bmat([[An, -Dn],[-Dn, zeros([4,4])]])
 
+print Matrix(C).rref()
 #total pressure inlet + fixed temp
 print "inlet"
-dpdu = -p*sqrt(U2)/(g*p/w1+(g-1)*U2/2)
-coeff = (-S[:,1]*n1 - S[:,2]*n2 + S[:,0]*dpdu).subs({w3:0,n1:-1,n2:0})
+#dpdu = -p*sqrt(U2)/(g*p/w1+(g-1)*U2/2)
+#coeff = (-S[:,1]*n1 - S[:,2]*n2 + S[:,0]*dpdu).subs({w3:0,n1:-1,n2:0})
 #print coeff
 
 

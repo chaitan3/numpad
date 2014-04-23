@@ -127,18 +127,12 @@ def extend(wh_interior, geo):
 
     # walls
     wh[:,:,0] = wh[:,:,1]
-    nwall = geo.normal_j[:,:,0]
-    nwall = hstack([nwall[:,:1], nwall, nwall[:,-1:]])
-    rhoU_n = sum(wh[1:3,:,0] * nwall, 0)
-    wh[1:3,:,0] -= 2 * rhoU_n * nwall
+    rhoU_n = sum(wh[1:3,1:-1,0] * geo.normal_j[:,:,0], 0)
+    wh[1:3,1:-1,0] -= 2 * rhoU_n * geo.normal_j[:,:,0]
 
     wh[:,:,-1] = wh[:,:,-2]
-    nwall = geo.normal_j[:,:,-1]
-    nwall = hstack([nwall[:,:1], nwall, nwall[:,-1:]])
-    rhoU_n = sum(wh[1:3,:,-1] * nwall, 0)
-    wh[1:3,:,-1] -= 2 * rhoU_n * nwall
-
-    wh[3,:,[0,-1]] = 0
+    rhoU_n = sum(wh[1:3,1:-1,-1] * geo.normal_j[:,:,-1], 0)
+    wh[1:3,1:-1,-1] -= 2 * rhoU_n * geo.normal_j[:,:,-1]
 
     return wh
 
@@ -234,6 +228,7 @@ def adjoint_eqns(wh, wh0, geo, dt):
     g_wh = array([g_w1, g_wh2, g_wh3, g_wh4])
     g_wh_j = (g_wh[:,:,1:,:] + g_wh[:,:,:-1,:])/2
     g_wh_i = (g_wh[:,:,:,1:] + g_wh[:,:,:,:-1])/2
+    g_wh_i[:,:,[0,-1],:] = 0
     D_i = visc_jacobian(w_i)
     D_j = visc_jacobian(w_j)
     F_i = sum(g_wh_i[:,0] * D_i[0,0] + g_wh_i[:,1] * D_i[0, 1], axis=1)
@@ -285,13 +280,14 @@ wh = solve(adjoint_eqns, wh0, args=(wh0, geo, dt), rel_tol=1E-9, abs_tol=1E-7)
 wh = base(extend(wh, geo))
 
 fig,axes = subplots(nrows=2, ncols=1)
-lim = [min(wh[0,:,:].min(), whd[0,:,:].min()), max(wh[0,:,:].max(),wh[0:,:,:].max())]
+var = 0
+lim = [min(wh[var,:,:].min(), whd[var,:,:].min()), max(wh[var,:,:].max(),wh[var:,:,:].max())]
 
-im=axes[0].contourf(xc, yc, whd[0,:,:], 100, vmin=lim[0], vmax=lim[1])
+im=axes[0].contourf(xc, yc, whd[var,:,:], 100, vmin=lim[0], vmax=lim[1])
 axes[0].set_title('discrete adjoint')
 axes[0].axis('scaled')
 
-im=axes[1].contourf(xc, yc, wh[0,1:-1,1:-1], 100, vmin=lim[0], vmax=lim[1])
+im=axes[1].contourf(xc, yc, wh[var,1:-1,1:-1], 100, vmin=lim[0], vmax=lim[1])
 axes[1].set_title('continuous adjoint')
 axes[1].axis('scaled')
 
@@ -299,3 +295,12 @@ fig.subplots_adjust(right=0.8)
 cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
 fig.colorbar(im, cax=cbar_ax)
 show()
+
+flow = np.load('bend{0}x{1}-flow-perturbed.npz'.format(Ni, Nj))
+wp = np.array([flow['w1'], flow['w2'], flow['w3'], flow['w4']])
+pf = np.zeros([4,Ni,Nj])
+perturbation(base(geo.xyc), pf)
+print 'objective delta ', sum((w[:,1:-1,1:-1]-wp[:,1:-1,1:-1])*gf)
+print 'discrete adjoint prediction', sum(whd*pf)
+print 'continuous adjoint prediction', sum(wh[:,1:-1,1:-1]*pf)
+

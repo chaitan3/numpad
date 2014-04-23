@@ -138,10 +138,11 @@ def solve(func, u0, args=(), kargs={},
         start2 = time.time()
         minus_du = splinalg.spsolve(J, np.ravel(res._base))
         print time.time()-start2
-        #P = splinalg.spilu(J, drop_tol=1e-5)
-        #M_x = lambda x: P.solve(x)
-        #M = splinalg.LinearOperator((n * m, n * m), M_x)
-        #minus_du = splinalg.gmres(J, np.ravel(res._base), M=M,tol=1e-6)
+
+#        P = splinalg.spilu(J, drop_tol=1e-5)
+#        M_x = lambda x: P.solve(x)
+#        M = splinalg.LinearOperator((n * m, n * m), M_x)
+#        minus_du = splinalg.gmres(J, np.ravel(res._base), M=M,tol=1e-6)
 
         u._base -= minus_du.reshape(u.shape)
         u = adarray(u._base)  # unlink operation history if any
