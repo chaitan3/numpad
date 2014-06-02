@@ -14,24 +14,24 @@ def extend(w_interior, geo):
 
     # inlet
     rho, u, v, E, p = primative(w[:,1,1:-1])
+
+    p = 0.4*rho*e_in
     c2 = 1.4 * p / rho
     c = sqrt(c2)
     mach2 = u**2 / c2
-    rhot = rho * (1 + 0.2 * mach2)**2.5
     pt = p * (1 + 0.2 * mach2)**3.5
 
-    d_rho = 1 - rho
     d_pt = pt_in - pt
     d_u = d_pt / (rho * (u + c))
-    d_p = rho * c * d_u
 
-    rho = rho + d_rho
+    #u = u + sqrt(((pt_in/(0.4*rho*e_in))**(1./3.5) - 1)/0.2)*sqrt(1.4*0.4*e_in)
     u = u + d_u
-    p = p + d_p
+
     w[0,0,1:-1] = rho
     w[1,0,1:-1] = rho * u
     w[2,0,1:-1] = 0
-    w[3,0,1:-1] = p / 0.4 + 0.5 * rho * u**2
+    #w[3,0,1:-1] = p / 0.4 + 0.5 * rho * u**2
+    w[3,0,1:-1] = rho*e_in + 0.5 * rho * u**2
 
     # outlet
     w[:,-1,1:-1] = w[:,-2,1:-1]
@@ -273,12 +273,13 @@ t, dt = 0, 1./Nj
 
 pt_in = 1.2E5
 p_out = 1E5
+e_in = p_out/(1.4-1)
 mu = 1
 al = 1
 
 w = zeros([4, Ni, Nj])
 w[0] = 1
-w[3] = 1E5 / (1.4 - 1)
+w[3] = p_out / (1.4 - 1)
 
 w0 = ravel(w)
 

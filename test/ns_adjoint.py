@@ -3,6 +3,7 @@ import sys
 from pylab import *
 sys.path.append('../..')
 from numpad import *
+from perturb import perturbation
 
 class geo2d:
     def __init__(self, xy):
@@ -135,8 +136,6 @@ def extend(wh_interior, geo):
     wh[1:3,1:-1,-1] -= 2 * rhoU_n * geo.normal_j[:,:,-1]
 
     return wh
-
-def jacobian(w, g_w):
     w1, w2, w3, w4 = w[0], w[1], w[2], w[3]
     w1x, w2x, w3x, w4x = g_w[0,0], g_w[1,0], g_w[2,0], g_w[3,0]
     w1y, w2y, w3y, w4y = g_w[0,1], g_w[1,1], g_w[2,1], g_w[3,1]

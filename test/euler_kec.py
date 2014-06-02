@@ -14,24 +14,17 @@ def extend(w_interior, geo):
 
     # inlet
     rho, u, v, E, p = primative(w[:,1,1:-1])
+    p = 0.4 * rho * e_in
     c2 = 1.4 * p / rho
     c = sqrt(c2)
     mach2 = (u**2 + v**2) / c2
-    rhot = rho * (1 + 0.2 * mach2)**2.5
-    pt = p * (1 + 0.2 * mach2)**3.5
+    rho = 1.4*pt_in/(c2 * (1 + 0.2 * mach2)**3.5)
+    u = sqrt(u**2 + v**2)
 
-    d_rho = 1 - rho
-    d_pt = pt_in - pt
-    d_u = d_pt / (rho * (u + c))
-    d_p = rho * c * d_u
-
-    rho = rho + d_rho
-    u = u + d_u
-    p = p + d_p
     w[0,0,1:-1] = rho
-    w[1,0,1:-1] = rho * u
+    w[1,0,1:-1] = rho*u
     w[2,0,1:-1] = 0
-    w[3,0,1:-1] = p / 0.4 + 0.5 * rho * u**2
+    w[3,0,1:-1] = rho * e_in + 0.5 * rho * u**2
 
     # outlet
     w[:,-1,1:-1] = w[:,-2,1:-1]
@@ -76,9 +69,13 @@ def sponge_flux(c_ext, w_ext, geo):
     a = geo.area
     ai = vstack([a[:1,:], (a[1:,:] + a[:-1,:]) / 2, a[-1:,:]])
     aj = hstack([a[:,:1], (a[:,1:] + a[:,:-1]) / 2, a[:,-1:]])
-
+    
+    wxx = (w_ext[:,2:,1:-1] + w_ext[:,:-2,1:-1] - 2 * w_ext[:,1:-1,1:-1]) / 3.
+    wyy = (w_ext[:,1:-1,2:] + w_ext[:,1:-1,:-2] - 2 * w_ext[:,1:-1,1:-1]) / 3.
     Fi = -0.5 * ci * ai * (w_ext[:,1:,1:-1] - w_ext[:,:-1,1:-1])
+    Fi[:,1:-1,:] = 0.5 * (ci * ai)[1:-1,:] * (wxx[:,1:,:] - wxx[:,:-1,:])
     Fj = -0.5 * cj * aj * (w_ext[:,1:-1,1:] - w_ext[:,1:-1,:-1])
+    Fj[:,:,1:-1] = 0.5 * (cj * aj)[:,1:-1] * (wyy[:,:,1:] - wyy[:,:,:-1])
     return Fi, Fj
 
 def euler_kec(w, w0, geo, dt):
@@ -87,6 +84,7 @@ def euler_kec(w, w0, geo, dt):
     '''
     w_ext = extend(w, geo)
     rho, u, v, E, p = primative(w_ext)
+    #c = adarray(sqrt(1.4 * base(p) / base(rho)))
     c = sqrt(1.4 * p / rho)
     # interface average
     rho_i = 0.5 * (rho[1:,1:-1] + rho[:-1,1:-1])
@@ -106,8 +104,8 @@ def euler_kec(w, w0, geo, dt):
     Fj = - F_j * geo.dxy_j[1] + G_j * geo.dxy_j[0]
     # sponge
     Fi_s, Fj_s = sponge_flux(c, w_ext, geo)
-    Fi[:5,:]  += 0.5 * Fi_s[:5,:]
-    Fi[-5:,:] += 0.5 * Fi_s[-5:,:]
+    Fi += 0.5 * Fi_s
+    Fj += 0.5 * Fj_s
     # residual
     divF = (Fi[:,1:,:] - Fi[:,:-1,:] + Fj[:,:,1:] - Fj[:,:,:-1]) / geo.area
     return (w - w0) / dt + ravel(divF + pf)
@@ -189,7 +187,7 @@ def vis(w, geo):
 geometry = 'nozzle'
 
 if geometry == 'nozzle':
-    Ni, Nj = 200,80
+    Ni, Nj = 100,40
     x = np.linspace(-20,20,Ni+1)
     y = np.linspace(-5, 5, Nj+1)
     a = np.ones(Ni+1)
@@ -230,10 +228,11 @@ t, dt = 0, 0.1
 
 pt_in = 1.05E5
 p_out = 1E5
+e_in = p_out / (1.4 - 1)
 
 w = zeros([4, Ni, Nj])
 w[0] = 1
-w[3] = 1E5 / (1.4 - 1)
+w[3] = p_out / (1.4 - 1)
 
 w0 = ravel(w)
 

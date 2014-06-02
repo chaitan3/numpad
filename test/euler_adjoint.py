@@ -53,7 +53,7 @@ gf = np.zeros([4, Ni, Nj])
 gf[obj] = g
 
 #discrete adjoint
-whd = splinalg.spsolve(Jt, np.ravel(gf), use_umfpack=False)
+whd = splinalg.spsolve(Jt, np.ravel(gf))
 whd = whd.reshape([4,Ni,Nj])
 
 flow = np.load('nozzle{0}x{1}-flow.npz'.format(Ni, Nj))
@@ -70,18 +70,17 @@ def extend(wh_interior, geo):
     g = 1.4
 
     # inlet
-    w_in = w[:,1,1:-1]
+    w_in = w[:,0,1:-1]
     w1, w2, w3, w4 = w_in[0], w_in[1], w_in[2], w_in[3]
-    wh[0:3,0,1:-1] = wh[0:3,1,1:-1]
-    coeff = np.array([ -w1 + w2*sqrt(w2**2/w1**2)/(g*(g - 1)*(w4 - w2**2/(2*w1))/w1 + w2**2*(g - 1)/(2*w1**2)),
-       w1*(w2*(g - 1)/w1 - 2*w2/w1) - w2*(g - 1) - sqrt(w2**2/w1**2)*(g - 1)*(w4 - w2**2/(2*w1))*(w1*(w2*(w2*(g - 1)/w1 - 2*w2/w1)/w1 - w2**2*(g - 1)/w1**2 + w2**2/w1**2)/((g - 1)*(w4 - w2**2/(2*w1))) - 1)/(g*(g - 1)*(w4 - w2**2/(2*w1))/w1 + w2**2*(g - 1)/(2*w1**2)),
-       -g*w2**2/w1 + w1*(-(g*w4 - w2**2*(g - 1)/(2*w1))/w1 + w2**2*(g - 1)/w1**2) - sqrt(w2**2/w1**2)*(g - 1)*(w4 - w2**2/(2*w1))*(-g*w2/(w1*(g - 1)) + w1*(-g*w2**3/(2*w1**3) + w2*(-(g*w4 - w2**2*(g - 1)/(2*w1))/w1 + w2**2*(g - 1)/w1**2)/w1 + w2*(g*w4 - w2**2*(g - 1)/(2*w1))/w1**2 - w2**3*(g - 1)/(2*w1**3))/((g - 1)*(w4 - w2**2/(2*w1))))/(g*(g - 1)*(w4 - w2**2/(2*w1))/w1 + w2**2*(g - 1)/(2*w1**2))])
+    wh[:,0,1:-1] = wh[:,1,1:-1]
+    coeff = np.array([w1*(-2*g**2*w1*w4 + g**2*w2**2 + 2*g*w1*w4 - 2*g*w2**2 + 2*w1*w2*(w2**2/w1**2)**(1./2) + w2**2)/(2*g**2*w1*w4 - g**2*w2**2 - 2*g*w1*w4 + 2*g*w2**2 - w2**2), -2*w2 - (w2**2/w1**2)**(1./2)*(g - 1)*(w4 - w2**2/(2*w1))*(-2*g*w1*w4 + g*w2**2 + 2*w1*w4 - 3*w2**2)/((g*(g - 1)*(w4 - w2**2/(2*w1))/w1 + w2**2*(g - 1)/(2*w1**2))*(2*g*w1*w4 - g*w2**2 - 2*w1*w4 + w2**2)), -(w2**2/w1**2)**(1./2)*(g - 1)*(w4 - w2**2/(2*w1))*(-2*g*w1*w2*w4 + g*w2**3 - w2**3)/((g*(g - 1)*(w4 - w2**2/(2*w1))/w1 + w2**2*(g - 1)/(2*w1**2))*(2*g*w1**2*w4 - g*w1*w2**2 - 2*w1**2*w4 + w1*w2**2)) + (-2*g*w1*w4 + g*w2**2 - 3*w2**2)/(2*w1)])
+    coeff = np.array([w1*(-2*g**2*w1*w4 + g**2*w2**2 + 2*g*w1*w4 - 2*g*w2**2 + 2*w1*w2*(w2**2/w1**2)**(1./2) + w2**2)/(2*g**2*w1*w4 - g**2*w2**2 - 2*g*w1*w4 + 2*g*w2**2 - w2**2), (-4*g**2*w1*w2*w4 + 2*g**2*w2**3 + 2*g*w1**2*w4*(w2**2/w1**2)**(1./2) - g*w1*w2**2*(w2**2/w1**2)**(1./2) + 4*g*w1*w2*w4 - 4*g*w2**3 - 2*w1**2*w4*(w2**2/w1**2)**(1./2) + 3*w1*w2**2*(w2**2/w1**2)**(1./2) + 2*w2**3)/(2*g**2*w1*w4 - g**2*w2**2 - 2*g*w1*w4 + 2*g*w2**2 - w2**2), (-2*g**2*w1*w4 + g**2*w2**2 + 2*g*w1*w4 - 4*g*w2**2 + 2*w1*w2*(w2**2/w1**2)**(1./2) + 3*w2**2)/(2*w1*(g - 1))])
 
 
     wh[3,0,1:-1] = -(wh[0,0,1:-1]*coeff[0] + wh[1,0,1:-1]*coeff[1])/coeff[2]
 
     # outlet
-    w_in = w[:,-2,1:-1]
+    w_in = w[:,-1,1:-1]
     w1, w2, w3, w4 = w_in[0], w_in[1], w_in[2], w_in[3]
     wh[3,-1,1:-1] = wh[3,-2,1:-1]
     n1 = base(geo.normal_i[0,-1,:])
@@ -113,21 +112,21 @@ def jacobian(w):
     one = np.ones(w1.shape)
     zero = np.zeros(w1.shape)
     g = one*1.4
-    A1 = np.array([[zero, -w2**2/w1**2 + (g - 1)*(w2**2 + w3**2)/(2*w1**2),
-        -w2*w3/w1**2,
-        -w2*(g*w4 - (g - 1)*(w2**2 + w3**2)/(2*w1))/w1**2 + w2*(g - 1)*(w2**2 + w3**2)/(2*w1**3)],
-       [one, -w2*(g - 1)/w1 + 2*w2/w1, w3/w1,
-        (g*w4 - (g - 1)*(w2**2 + w3**2)/(2*w1))/w1 - w2**2*(g - 1)/w1**2],
-       [zero, -w3*(g - 1)/w1, w2/w1, -w2*w3*(g - 1)/w1**2],
-       [zero, g - 1, zero, g*w2/w1]])
-    A2 = np.array([[zero, -w2*w3/w1**2,
-        -w3**2/w1**2 + (g - 1)*(w2**2 + w3**2)/(2*w1**2),
-        -w3*(g*w4 - (g - 1)*(w2**2 + w3**2)/(2*w1))/w1**2 + w3*(g - 1)*(w2**2 + w3**2)/(2*w1**3)],
-       [zero, w3/w1, -w2*(g - 1)/w1, -w2*w3*(g - 1)/w1**2],
-       [one, w2/w1, -w3*(g - 1)/w1 + 2*w3/w1,
-        (g*w4 - (g - 1)*(w2**2 + w3**2)/(2*w1))/w1 - w3**2*(g - 1)/w1**2],
-       [zero, zero, g - 1, g*w3/w1]])
-    return A1, A2
+    return np.array([[[zero, (g*w2**2 + g*w3**2 - 3*w2**2 - w3**2)/(2*w1**2),
+         -w2*w3/w1**2,
+         w2*(-g*w1*w4 + g*w2**2 + g*w3**2 - w2**2 - w3**2)/w1**3],
+        [one, w2*(-g + 3)/w1, w3/w1,
+         (2*g*w1*w4 - 3*g*w2**2 - g*w3**2 + 3*w2**2 + w3**2)/(2*w1**2)],
+        [zero, w3*(-g + 1)/w1, w2/w1, w2*w3*(-g + 1)/w1**2],
+        [zero, g - 1, zero, g*w2/w1]],
+
+       [[zero, -w2*w3/w1**2,
+         (g*w2**2 + g*w3**2 - w2**2 - 3*w3**2)/(2*w1**2),
+         w3*(-g*w1*w4 + g*w2**2 + g*w3**2 - w2**2 - w3**2)/w1**3],
+        [zero, w3/w1, w2*(-g + 1)/w1, w2*w3*(-g + 1)/w1**2],
+        [one, w2/w1, w3*(-g + 3)/w1,
+         (2*g*w1*w4 - g*w2**2 - 3*g*w3**2 + w2**2 + 3*w3**2)/(2*w1**2)],
+        [zero, zero, g - 1, g*w3/w1]]]) 
 
 def sponge_flux(c_ext, w_ext, geo):
     ci = 0.5 * (c_ext[1:,1:-1] + c_ext[:-1,1:-1])
@@ -137,36 +136,56 @@ def sponge_flux(c_ext, w_ext, geo):
     ai = vstack([a[:1,:], (a[1:,:] + a[:-1,:]) / 2, a[-1:,:]])
     aj = hstack([a[:,:1], (a[:,1:] + a[:,:-1]) / 2, a[:,-1:]])
 
+    wxx = (w_ext[:,2:,1:-1] + w_ext[:,:-2,1:-1] - 2 * w_ext[:,1:-1,1:-1]) / 3.
+    wyy = (w_ext[:,1:-1,2:] + w_ext[:,1:-1,:-2] - 2 * w_ext[:,1:-1,1:-1]) / 3.
     Fi = 0.5 * ci * ai * (w_ext[:,1:,1:-1] - w_ext[:,:-1,1:-1])
+    Fi[:,1:-1,:] = -0.5 * (ci * ai)[1:-1,:] * (wxx[:,1:,:] - wxx[:,:-1,:])
     Fj = 0.5 * cj * aj * (w_ext[:,1:-1,1:] - w_ext[:,1:-1,:-1])
+    Fj[:,:,1:-1] = -0.5 * (cj * aj)[:,1:-1] * (wyy[:,:,1:] - wyy[:,:,:-1])
     return Fi, Fj
 
 def adjoint_eqns(wh, wh0, geo, dt):
     wh_ext = extend(wh, geo)
+    #non conservative flux discretization
+#    g_wh_i = (wh_ext[:,1:,1:-1] - wh_ext[:,:-1,1:-1])/2
+#    g_wh_j = (wh_ext[:,1:-1,1:] - wh_ext[:,1:-1,:-1])/2
+#    F_i, G_i = jacobian(w_i)
+#    F_j, G_j = jacobian(w_j)
+#    F_i = sum(g_wh_i * F_i, axis=1)
+#    F_j = sum(g_wh_j * F_j, axis=1)
+#    G_i = sum(g_wh_i * G_i, axis=1)
+#    G_j = sum(g_wh_j * G_j, axis=1)
+#    Fi = + F_i * geo.dxy_i[1] - G_i * geo.dxy_i[0]
+#    Fj = - F_j * geo.dxy_j[1] + G_j * geo.dxy_j[0]
+    # residual 
+#    divF = (Fi[:,1:,:] + Fi[:,:-1,:] + Fj[:,:,1:] + Fj[:,:,:-1]) / geo.area
+
+    #Palacios discretization
     wh_i = (wh_ext[:,1:,1:-1] + wh_ext[:,:-1,1:-1])/2
-    g_wh_i = (wh_ext[:,1:,1:-1] - wh_ext[:,:-1,1:-1])/2
     wh_j = (wh_ext[:,1:-1,1:] + wh_ext[:,1:-1,:-1])/2
-    g_wh_j = (wh_ext[:,1:-1,1:] - wh_ext[:,1:-1,:-1])/2
-    F_i, G_i = jacobian(w_i)
-    F_j, G_j = jacobian(w_j)
-    F_i = sum(g_wh_i * F_i, axis=1)
-    F_j = sum(g_wh_j * F_j, axis=1)
-    G_i = sum(g_wh_i * G_i, axis=1)
-    G_j = sum(g_wh_j * G_j, axis=1)
-    Fi = + F_i * geo.dxy_i[1] - G_i * geo.dxy_i[0]
-    Fj = - F_j * geo.dxy_j[1] + G_j * geo.dxy_j[0]
+    F, G = jacobian(w)
+    F_i_l = sum(wh_i * F[:,:,1:,1:-1], axis=1)
+    F_i_r = sum(wh_i * F[:,:,:-1,1:-1], axis=1)
+    F_j_l = sum(wh_j * F[:,:,1:-1,1:], axis=1)
+    F_j_r = sum(wh_j * F[:,:,1:-1,:-1], axis=1)
+    G_i_l = sum(wh_i * G[:,:,1:,1:-1], axis=1)
+    G_i_r = sum(wh_i * G[:,:,:-1,1:-1], axis=1)
+    G_j_l = sum(wh_j * G[:,:,1:-1,1:], axis=1)
+    G_j_r = sum(wh_j * G[:,:,1:-1,:-1], axis=1)
+    Fi_l = + F_i_l * geo.dxy_i[1] - G_i_l * geo.dxy_i[0]
+    Fi_r = + F_i_r * geo.dxy_i[1] - G_i_r * geo.dxy_i[0]
+    Fj_l = - F_j_l * geo.dxy_j[1] + G_j_l * geo.dxy_j[0]
+    Fj_r = - F_j_r * geo.dxy_j[1] + G_j_r * geo.dxy_j[0]
+    divF = (Fi_r[:,1:,:] - Fi_l[:,:-1,:] + Fj_r[:,:,1:] - Fj_l[:,:,:-1]) / geo.area
+
     # sponge
     w1, w2, w3, w4 = w[0], w[1], w[2], w[3]
     g = 1.4
     U2 = (w2**2+w3**2)/w1**2
     p = (g-1)*(w4 - w1*U2/2)
-    c = sqrt(1.4*p/w1)
+    c = sqrt(g*p/w1)
     Fi_s, Fj_s = sponge_flux(adarray(c), wh_ext, geo)
-    #Fi[:5,:] += 0.5 * Fi_s[:5,:]
-    #Fi[-5:,:] += 0.5 * Fi_s[-5:,:]
-    # residual 
-    divF = (Fi[:,1:,:] + Fi[:,:-1,:] + Fj[:,:,1:] + Fj[:,:,:-1]) / geo.area
-    divF += 0.5*(Fi_s[:,1:,:] - Fi_s[:,:-1,:]) / geo.area
+    divF += 0.5*(Fi_s[:,1:,:] - Fi_s[:,:-1,:] + Fj_s[:,:,1:] - Fj_s[:,:,:-1]) / geo.area
 
     return (wh - wh0)/dt - ravel(divF + gf) 
 
@@ -197,21 +216,22 @@ print('Final, t = inf')
 wh = solve(adjoint_eqns, wh0, args=(wh0, geo, dt), rel_tol=1E-9, abs_tol=1E-7)
 wh = base(extend(wh, geo))
 
+var = 1
 fig,axes = subplots(nrows=2, ncols=1)
-lim = [min(wh[0,:,:].min(), whd[0,:,:].min()), max(wh[0,:,:].max(),wh[0:,:,:].max())]
+lim = [min(wh[var,:,:].min(), whd[var,:,:].min()), max(wh[var,:,:].max(),whd[var:,:,:].max())]
 
-im=axes[0].contourf(xc, yc, whd[0,:,:], 100, vmin=lim[0], vmax=lim[1])
 axes[0].set_title('discrete adjoint')
+im1=axes[0].contourf(xc, yc, whd[var,:,:], 100, vmin=lim[0], vmax=lim[1])
 axes[0].axis('scaled')
 
-im=axes[1].contourf(xc, yc, wh[0,1:-1,1:-1], 100, vmin=lim[0], vmax=lim[1])
 axes[1].set_title('continuous adjoint')
+im2=axes[1].contourf(xc, yc, wh[var,1:-1,1:-1], 100, vmin=lim[0], vmax=lim[1])
 axes[1].axis('scaled')
 
 fig.subplots_adjust(right=0.8)
 cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
-fig.colorbar(im, cax=cbar_ax)
-#show()
+fig.colorbar(im1, cax=cbar_ax)
+show()
 
 print obj, Ni, Nj, np.linalg.norm(wh[0,1:-1,1:-1]-whd[0], 'fro')
 

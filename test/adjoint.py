@@ -17,6 +17,7 @@ n = [n1, n2]
 g, mu, al,R = symbols(('g', 'mu', 'al','R'))
 U2 = (w2**2 + w3**2)/(w1**2)
 p = (g-1)*(w4 - w1*U2/2)
+e = p*(g-1)/w1
 fE = (w4*g - (g-1)*w1*U2/2)
 
 #define the 5*3 flux array
@@ -52,7 +53,8 @@ D = np.zeros([2,2,4,4], dtype=object)
 for k in range(0, 4):
     for i in range(0, 4):
         for j in range(0,2):
-            A[j, k, i] = diff(f[i,j]-fv[i,j], w[k])
+            #A[j, k, i] = simplify(diff(f[i,j]-fv[i,j], w[k]))
+            A[j, k, i] = simplify(diff(f[i,j], w[k]))
             for m in range(0, 2):
                 D[m,j,k,i] = diff(fv[i,j], wd[m, k])
 
@@ -64,6 +66,8 @@ Ap[Ap==1] = one
 Dp = D.copy()
 Dp[Dp==0] = zero
 Dp[Dp==1] = one
+print Ap
+print Dp
 
 An = Matrix(A[0].T*n[0] + A[1].T*n[1])
 Dn = Matrix((D[0,0].T*n[0] + D[0,1].T*n[1])*n[0] + (D[1,0].T*n[0] + D[1,1].T*n[1])*n[1])
@@ -73,10 +77,13 @@ M = Matrix([[1,0,0,0],
           [w3/w1,0,w1,0],
           [U2/2,w2,w3,1/(g-1)]])
 
-T = Matrix([[w1/p,0,0,-w1**2*R/p],
+T = Matrix([[(g-1)/e,0,0,-p*(g-1)/(e*e)],
           [0,1,0,0],
           [0,0,1,0],
           [1,0,0,0]])
+An = An*M*T
+Dn = Dn*M*T
+S = An.subs({mu:0,al:0})
 #solid wall, dU = 0. dT = 0
 print "wall"
 print "du/dn"
@@ -85,8 +92,6 @@ for i in range(0,4):
     for j in range(0,4):
         Dn[i,j] = simplify(Dn[i,j])
 print Dn
-An = An*M*T
-Dn = Dn*M*T
 print "du"
 print "w"
 An = An.subs({w2:0,w3:0})
@@ -96,19 +101,26 @@ for i in range(0,4):
         An[i,j] = simplify(An[i,j])
 print An
 print "dw/dn"
-Dn = np.array(Dn.subs({w2:0,w3:0,n2:sqrt(1-n1**2)}))
+C = np.bmat([[An, -Dn],[Dn, zeros([4,4])]])
+print Matrix(C).rref()
+
+#total pressure inlet + fixed temp
 for i in range(0,4):
     for j in range(0,4):
-        Dn[i,j] = simplify(Dn[i,j])
-print Dn
-C = np.bmat([[An, -Dn],[-Dn, zeros([4,4])]])
+        S[i,j] = cancel(expand((S[i,j])))
+Sb=S.subs({w2:-n2*w3/n1})
+print simplify(simplify(Sb[3,1]*n1 + Sb[3,2]*n2).subs({n1**2:1-n2**2}))
 
-print Matrix(C).rref()
-#total pressure inlet + fixed temp
 print "inlet"
-#dpdu = -p*sqrt(U2)/(g*p/w1+(g-1)*U2/2)
-#coeff = (-S[:,1]*n1 - S[:,2]*n2 + S[:,0]*dpdu).subs({w3:0,n1:-1,n2:0})
-#print coeff
-
-
-
+dpdu = -p*sqrt(U2)/(g*p/w1+(g-1)*U2/2)
+coeff = (-S[:,1]*n1 - S[:,2]*n2 + S[:,0]*dpdu).subs({w3:0,n1:-1,n2:0})
+for i in range(0, 4):
+    coeff[i] = simplify(coeff[i])
+coeff = flatten(coeff)
+print coeff
+#static pressure outlet
+print "outlet"
+out = S[0,1:]*S[1:,1:].inv()
+for i in range(0, 4):
+    out[i] = simplify(out[i])
+print out
